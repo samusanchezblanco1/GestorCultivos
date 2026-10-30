@@ -6,50 +6,70 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Types;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ProduccionDao {
 
-    public void guardar(long filaId, int anio, double kilos) {
+    public record Totales(double estimados, double reales) { }
+
+    public void guardarEstimado(long filaId, int anio, Double kilos) {
+        guardar("kilos_estimados", filaId, anio, kilos);
+    }
+
+    public void guardarReal(long filaId, int anio, Double kilos) {
+        guardar("kilos_reales", filaId, anio, kilos);
+    }
+
+    /** Estima cada fila de la plantación como kilosPorArbol x número de árboles de la fila. */
+    public void aplicarMedia(long plantacionId, int anio, double kilosPorArbol) {
         String sql = """
-                INSERT INTO produccion (fila_id, anio, kilos) VALUES (?, ?, ?)
-                ON CONFLICT (fila_id, anio) DO UPDATE SET kilos = excluded.kilos""";
+                INSERT INTO produccion (fila_id, anio, kilos_estimados)
+                SELECT id, ?, num_arboles * ? FROM fila WHERE plantacion_id = ?
+                ON CONFLICT (fila_id, anio) DO UPDATE SET kilos_estimados = excluded.kilos_estimados""";
         try (Connection c = Database.conectar();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setLong(1, filaId);
-            ps.setInt(2, anio);
-            ps.setDouble(3, kilos);
+            ps.setInt(1, anio);
+            ps.setDouble(2, kilosPorArbol);
+            ps.setLong(3, plantacionId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new DatosException("No se pudo guardar la producción", e);
+            throw new DatosException("No se pudo aplicar la media", e);
         }
     }
 
-    public List<Produccion> listarPorFila(long filaId) {
-        String sql = "SELECT id, fila_id, anio, kilos FROM produccion WHERE fila_id = ? ORDER BY anio DESC";
-        List<Produccion> lista = new ArrayList<>();
+    /** Devuelve la producción de cada fila de la plantación en ese año (clave: id de la fila). */
+    public Map<Long, Produccion> listarPorPlantacion(long plantacionId, int anio) {
+        String sql = """
+                SELECT p.id, p.fila_id, p.anio, p.kilos_estimados, p.kilos_reales
+                FROM produccion p JOIN fila f ON p.fila_id = f.id
+                WHERE f.plantacion_id = ? AND p.anio = ?""";
+        Map<Long, Produccion> mapa = new HashMap<>();
         try (Connection c = Database.conectar();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setLong(1, filaId);
+            ps.setLong(1, plantacionId);
+            ps.setInt(2, anio);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    lista.add(new Produccion(
+                    Produccion p = new Produccion(
                             rs.getLong("id"),
                             rs.getLong("fila_id"),
                             rs.getInt("anio"),
-                            rs.getDouble("kilos")));
+                            leer(rs, "kilos_estimados"),
+                            leer(rs, "kilos_reales"));
+                    mapa.put(p.filaId(), p);
                 }
             }
-            return lista;
+            return mapa;
         } catch (SQLException e) {
             throw new DatosException("No se pudo leer la producción", e);
         }
     }
 
-    public double totalPlantacion(long plantacionId, int anio) {
+    public Totales totales(long plantacionId, int anio) {
         String sql = """
-                SELECT COALESCE(SUM(p.kilos), 0)
+                SELECT COALESCE(SUM(p.kilos_estimados), 0), COALESCE(SUM(p.kilos_reales), 0)
                 FROM produccion p JOIN fila f ON p.fila_id = f.id
                 WHERE f.plantacion_id = ? AND p.anio = ?""";
         try (Connection c = Database.conectar();
@@ -58,10 +78,35 @@ public class ProduccionDao {
             ps.setInt(2, anio);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                return rs.getDouble(1);
+                return new Totales(rs.getDouble(1), rs.getDouble(2));
             }
         } catch (SQLException e) {
-            throw new DatosException("No se pudo calcular el total", e);
+            throw new DatosException("No se pudo calcular los totales", e);
         }
+    }
+
+    private void guardar(String columna, long filaId, int anio, Double kilos) {
+        // El nombre de la columna no puede ser un parámetro (?), por eso se concatena.
+        // Es seguro porque solo lo pasan los dos métodos de arriba, con textos fijos.
+        String sql = "INSERT INTO produccion (fila_id, anio, " + columna + ") VALUES (?, ?, ?) "
+                + "ON CONFLICT (fila_id, anio) DO UPDATE SET " + columna + " = excluded." + columna;
+        try (Connection c = Database.conectar();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, filaId);
+            ps.setInt(2, anio);
+            if (kilos == null) {
+                ps.setNull(3, Types.REAL);
+            } else {
+                ps.setDouble(3, kilos);
+            }
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatosException("No se pudo guardar la producción", e);
+        }
+    }
+
+    private static Double leer(ResultSet rs, String columna) throws SQLException {
+        double valor = rs.getDouble(columna);
+        return rs.wasNull() ? null : valor;
     }
 }

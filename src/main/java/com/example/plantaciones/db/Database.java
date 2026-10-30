@@ -15,18 +15,16 @@ public final class Database {
 
     private Database() { }
 
+    public static Path carpetaDatos() {
+        return CARPETA;
+    }
+
     public static Connection conectar() throws SQLException {
         Connection conexion = DriverManager.getConnection(URL);
         try (Statement st = conexion.createStatement()) {
             st.execute("PRAGMA foreign_keys = ON");
         }
         return conexion;
-    }
-
-    //Guardar Fotos
-
-    public static Path carpetaDatos() {
-        return CARPETA;
     }
 
     public static void inicializar() {
@@ -64,8 +62,15 @@ public final class Database {
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         fila_id INTEGER NOT NULL REFERENCES fila(id) ON DELETE CASCADE,
                         anio INTEGER NOT NULL,
-                        kilos REAL NOT NULL,
+                        kilos_estimados REAL,
+                        kilos_reales REAL,
                         UNIQUE (fila_id, anio)
+                    )""");
+                st.execute("""
+                    CREATE TABLE IF NOT EXISTS variedad (
+                        nombre TEXT PRIMARY KEY COLLATE NOCASE,
+                        inicio TEXT,
+                        fin TEXT
                     )""");
             }
         } catch (Exception e) {
