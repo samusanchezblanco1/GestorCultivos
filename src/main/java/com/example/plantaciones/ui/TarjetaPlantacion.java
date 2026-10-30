@@ -63,7 +63,7 @@ public class TarjetaPlantacion extends VBox {
                         actual.rutaFoto(), actual.hectareas())));
         descripcion.estilo("-fx-font-size: 12px;");
 
-        Label hectareas = new Label(String.format("%.2f ha", plantacion.hectareas()));
+        Label hectareas = new Label(String.format("%.2f ha · %d manzanos", plantacion.hectareas(), progreso.total()));
 
         double fraccion = progreso.total() == 0 ? 0 : (double) progreso.recogidos() / progreso.total();
         ProgressBar barra = new ProgressBar(fraccion);

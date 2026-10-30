@@ -20,13 +20,18 @@ import javafx.scene.layout.HBox;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.function.Consumer;
+
 public class PlantacionesView extends BorderPane {
 
     private final PlantacionDao plantaciones = new PlantacionDao();
     private final ArbolDao arboles = new ArbolDao();
     private final FlowPane tarjetas = new FlowPane(16, 16);
+    private final Consumer<Plantacion> alAbrir;
 
-    public PlantacionesView() {
+
+    public PlantacionesView(Consumer<Plantacion> alAbrir) {
+        this.alAbrir = alAbrir;
         Label titulo = new Label("Mis plantaciones");
         titulo.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
         Button nueva = new Button("+ Nueva plantación");
@@ -54,7 +59,7 @@ public class PlantacionesView extends BorderPane {
         }
         for (Plantacion p : lista) {
             tarjetas.getChildren().add(new TarjetaPlantacion(
-                    p, arboles.progreso(p.id()), this::actualizar, this::borrar, this::abrir));
+                    p, arboles.progreso(p.id()), this::actualizar, this::borrar, alAbrir));
         }
     }
 
@@ -62,9 +67,7 @@ public class PlantacionesView extends BorderPane {
         plantaciones.actualizar(p);
     }
 
-    private void abrir(Plantacion p) {
-        alerta("La pantalla de detalle de «" + p.nombre() + "» la construimos en el siguiente paso.");
-    }
+
 
     private void borrar(Plantacion p) {
         Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION,
