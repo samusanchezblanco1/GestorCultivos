@@ -23,6 +23,12 @@ public final class Database {
         return conexion;
     }
 
+    //Guardar Fotos
+
+    public static Path carpetaDatos() {
+        return CARPETA;
+    }
+
     public static void inicializar() {
         try {
             Files.createDirectories(CARPETA);
