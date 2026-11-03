@@ -53,14 +53,12 @@ public class TarjetaPlantacion extends VBox {
         mostrarFoto();
 
         TextoEditable nombre = new TextoEditable(plantacion.nombre(), "Sin nombre", false, false,
-                texto -> guardar(new Plantacion(actual.id(), texto, actual.descripcion(),
-                        actual.rutaFoto(), actual.hectareas())));
+                texto -> guardar(actual.conNombre(texto)));
         nombre.estilo("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         TextoEditable descripcion = new TextoEditable(plantacion.descripcion(),
                 "Doble clic para añadir una descripción", true, true,
-                texto -> guardar(new Plantacion(actual.id(), actual.nombre(), texto,
-                        actual.rutaFoto(), actual.hectareas())));
+                texto -> guardar(actual.conDescripcion(texto)));
         descripcion.estilo("-fx-font-size: 12px;");
 
         Label hectareas = new Label(String.format("%.2f ha · %d manzanos", plantacion.hectareas(), progreso.total()));
@@ -105,8 +103,7 @@ public class TarjetaPlantacion extends VBox {
         }
         try {
             String ruta = Fotos.guardar(archivo, actual.id());
-            guardar(new Plantacion(actual.id(), actual.nombre(), actual.descripcion(),
-                    ruta, actual.hectareas()));
+            guardar(actual.conFoto(ruta));
             mostrarFoto();
         } catch (IOException ex) {
             new Alert(Alert.AlertType.ERROR, "No se pudo copiar la foto: " + ex.getMessage()).showAndWait();

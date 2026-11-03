@@ -13,13 +13,17 @@ import java.util.List;
 public class PlantacionDao {
 
     public long insertar(Plantacion p) {
-        String sql = "INSERT INTO plantacion (nombre, descripcion, ruta_foto, hectareas) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO plantacion (nombre, descripcion, ruta_foto, hectareas, "
+                + "fecha_plantacion, distancia_arboles, distancia_borde) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection c = Database.conectar();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, p.nombre());
             ps.setString(2, p.descripcion());
             ps.setString(3, p.rutaFoto());
             ps.setDouble(4, p.hectareas());
+            Sql.ponerFecha(ps, 5, p.fechaPlantacion());
+            ps.setDouble(6, p.distanciaArboles());
+            ps.setDouble(7, p.distanciaBorde());
             ps.executeUpdate();
             try (ResultSet claves = ps.getGeneratedKeys()) {
                 claves.next();
@@ -31,7 +35,8 @@ public class PlantacionDao {
     }
 
     public List<Plantacion> listar() {
-        String sql = "SELECT id, nombre, descripcion, ruta_foto, hectareas FROM plantacion ORDER BY id";
+        String sql = "SELECT id, nombre, descripcion, ruta_foto, hectareas, fecha_plantacion, "
+                + "distancia_arboles, distancia_borde FROM plantacion ORDER BY id";
         List<Plantacion> lista = new ArrayList<>();
         try (Connection c = Database.conectar();
              Statement st = c.createStatement();
@@ -42,7 +47,10 @@ public class PlantacionDao {
                         rs.getString("nombre"),
                         rs.getString("descripcion"),
                         rs.getString("ruta_foto"),
-                        rs.getDouble("hectareas")));
+                        rs.getDouble("hectareas"),
+                        Sql.leerFecha(rs, "fecha_plantacion"),
+                        rs.getDouble("distancia_arboles"),
+                        rs.getDouble("distancia_borde")));
             }
             return lista;
         } catch (SQLException e) {
@@ -51,14 +59,18 @@ public class PlantacionDao {
     }
 
     public void actualizar(Plantacion p) {
-        String sql = "UPDATE plantacion SET nombre = ?, descripcion = ?, ruta_foto = ?, hectareas = ? WHERE id = ?";
+        String sql = "UPDATE plantacion SET nombre = ?, descripcion = ?, ruta_foto = ?, hectareas = ?, "
+                + "fecha_plantacion = ?, distancia_arboles = ?, distancia_borde = ? WHERE id = ?";
         try (Connection c = Database.conectar();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, p.nombre());
             ps.setString(2, p.descripcion());
             ps.setString(3, p.rutaFoto());
             ps.setDouble(4, p.hectareas());
-            ps.setLong(5, p.id());
+            Sql.ponerFecha(ps, 5, p.fechaPlantacion());
+            ps.setDouble(6, p.distanciaArboles());
+            ps.setDouble(7, p.distanciaBorde());
+            ps.setLong(8, p.id());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new DatosException("No se pudo actualizar la plantación", e);
