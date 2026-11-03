@@ -1,3 +1,3 @@
 package com.example.plantaciones.model;
 
-public record Produccion(long id, long filaId, int anio, Double kilosEstimados, Double kilosReales) { }
+public record Produccion(long id, long tramoId, int anio, Double kilosEstimados, Double kilosReales) { }

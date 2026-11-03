@@ -7,37 +7,23 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FilaDao {
 
     public long insertar(Fila f) {
-        try (Connection c = Database.conectar()) {
-            c.setAutoCommit(false);
-            try {
-                long filaId;
-                String sql = "INSERT INTO fila (plantacion_id, numero, variedad, num_arboles, fecha_recogida) "
-                        + "VALUES (?, ?, ?, ?, ?)";
-                try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-                    ps.setLong(1, f.plantacionId());
-                    ps.setInt(2, f.numero());
-                    ps.setString(3, f.variedad());
-                    ps.setInt(4, f.numArboles());
-                    ps.setString(5, fechaATexto(f.fechaRecogida()));
-                    ps.executeUpdate();
-                    try (ResultSet claves = ps.getGeneratedKeys()) {
-                        claves.next();
-                        filaId = claves.getLong(1);
-                    }
-                }
-                crearArboles(c, filaId, 1, f.numArboles());
-                c.commit();
-                return filaId;
-            } catch (SQLException e) {
-                c.rollback();
-                throw e;
+        String sql = "INSERT INTO fila (plantacion_id, numero, ancho, fecha_plantacion) VALUES (?, ?, ?, ?)";
+        try (Connection c = Database.conectar();
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, f.plantacionId());
+            ps.setInt(2, f.numero());
+            ps.setDouble(3, f.ancho());
+            Sql.ponerFecha(ps, 4, f.fechaPlantacion());
+            ps.executeUpdate();
+            try (ResultSet claves = ps.getGeneratedKeys()) {
+                claves.next();
+                return claves.getLong(1);
             }
         } catch (SQLException e) {
             throw new DatosException("No se pudo insertar la fila", e);
@@ -45,7 +31,7 @@ public class FilaDao {
     }
 
     public List<Fila> listarPorPlantacion(long plantacionId) {
-        String sql = "SELECT id, plantacion_id, numero, variedad, num_arboles, fecha_recogida "
+        String sql = "SELECT id, plantacion_id, numero, ancho, fecha_plantacion "
                 + "FROM fila WHERE plantacion_id = ? ORDER BY numero";
         List<Fila> lista = new ArrayList<>();
         try (Connection c = Database.conectar();
@@ -57,9 +43,8 @@ public class FilaDao {
                             rs.getLong("id"),
                             rs.getLong("plantacion_id"),
                             rs.getInt("numero"),
-                            rs.getString("variedad"),
-                            rs.getInt("num_arboles"),
-                            textoAFecha(rs.getString("fecha_recogida"))));
+                            rs.getDouble("ancho"),
+                            Sql.leerFecha(rs, "fecha_plantacion")));
                 }
             }
             return lista;
@@ -69,43 +54,14 @@ public class FilaDao {
     }
 
     public void actualizar(Fila f) {
-        try (Connection c = Database.conectar()) {
-            c.setAutoCommit(false);
-            try {
-                int anteriores;
-                try (PreparedStatement ps = c.prepareStatement("SELECT num_arboles FROM fila WHERE id = ?")) {
-                    ps.setLong(1, f.id());
-                    try (ResultSet rs = ps.executeQuery()) {
-                        rs.next();
-                        anteriores = rs.getInt(1);
-                    }
-                }
-
-                String sql = "UPDATE fila SET numero = ?, variedad = ?, num_arboles = ?, fecha_recogida = ? WHERE id = ?";
-                try (PreparedStatement ps = c.prepareStatement(sql)) {
-                    ps.setInt(1, f.numero());
-                    ps.setString(2, f.variedad());
-                    ps.setInt(3, f.numArboles());
-                    ps.setString(4, fechaATexto(f.fechaRecogida()));
-                    ps.setLong(5, f.id());
-                    ps.executeUpdate();
-                }
-
-                if (f.numArboles() > anteriores) {
-                    crearArboles(c, f.id(), anteriores + 1, f.numArboles());
-                } else if (f.numArboles() < anteriores) {
-                    try (PreparedStatement ps = c.prepareStatement(
-                            "DELETE FROM arbol WHERE fila_id = ? AND posicion > ?")) {
-                        ps.setLong(1, f.id());
-                        ps.setInt(2, f.numArboles());
-                        ps.executeUpdate();
-                    }
-                }
-                c.commit();
-            } catch (SQLException e) {
-                c.rollback();
-                throw e;
-            }
+        String sql = "UPDATE fila SET numero = ?, ancho = ?, fecha_plantacion = ? WHERE id = ?";
+        try (Connection c = Database.conectar();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, f.numero());
+            ps.setDouble(2, f.ancho());
+            Sql.ponerFecha(ps, 3, f.fechaPlantacion());
+            ps.setLong(4, f.id());
+            ps.executeUpdate();
         } catch (SQLException e) {
             throw new DatosException("No se pudo actualizar la fila", e);
         }
@@ -119,25 +75,5 @@ public class FilaDao {
         } catch (SQLException e) {
             throw new DatosException("No se pudo borrar la fila", e);
         }
-    }
-
-    private void crearArboles(Connection c, long filaId, int desde, int hasta) throws SQLException {
-        String sql = "INSERT INTO arbol (fila_id, posicion, recogido) VALUES (?, ?, 0)";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
-            for (int posicion = desde; posicion <= hasta; posicion++) {
-                ps.setLong(1, filaId);
-                ps.setInt(2, posicion);
-                ps.addBatch();
-            }
-            ps.executeBatch();
-        }
-    }
-
-    private static String fechaATexto(LocalDate fecha) {
-        return fecha == null ? null : fecha.toString();
-    }
-
-    private static LocalDate textoAFecha(String texto) {
-        return texto == null ? null : LocalDate.parse(texto);
     }
 }

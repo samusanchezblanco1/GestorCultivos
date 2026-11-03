@@ -1,3 +1,5 @@
 package com.example.plantaciones.model;
 
-public record Arbol(long id, long filaId, int posicion, boolean recogido) { }
+import java.time.LocalDate;
+
+public record Arbol(long id, long tramoId, int posicion, EstadoArbol estado, LocalDate fechaPlantacion) { }
