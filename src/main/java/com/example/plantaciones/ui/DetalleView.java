@@ -68,8 +68,13 @@ public class DetalleView extends BorderPane {
         editarPlantacion.setOnAction(e -> editarPlantacion());
         Button nuevaFila = new Button("+ Nueva fila");
         nuevaFila.setOnAction(e -> editarFila(null));
+        Button gestionVariedades = new Button("Variedades");
+        gestionVariedades.setOnAction(e -> {
+            new VariedadesDialog().mostrar();
+            recargar();
+        });
 
-        HBox cabecera = new HBox(16, volver, tituloPlantacion, editarPlantacion, nuevaFila);
+        HBox cabecera = new HBox(16, volver, tituloPlantacion, editarPlantacion, nuevaFila, gestionVariedades);
         cabecera.setAlignment(Pos.CENTER_LEFT);
 
         datosPlantacion.setStyle("-fx-font-size: 12px; -fx-opacity: 0.8;");

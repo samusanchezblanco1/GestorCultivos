@@ -36,8 +36,10 @@ public class PlantacionesView extends BorderPane {
         titulo.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
         Button nueva = new Button("+ Nueva plantación");
         nueva.setOnAction(e -> nuevaPlantacion());
+        Button variedades = new Button("Variedades");
+        variedades.setOnAction(e -> new VariedadesDialog().mostrar());
 
-        HBox cabecera = new HBox(16, titulo, nueva);
+        HBox cabecera = new HBox(16, titulo, nueva, variedades);
         cabecera.setAlignment(Pos.CENTER_LEFT);
         cabecera.setPadding(new Insets(16));
 

@@ -9,18 +9,22 @@ import java.sql.Statement;
 
 public final class Database {
 
-    private static final Path CARPETA = Path.of(System.getProperty("user.home"), ".plantaciones");
-    private static final String URL =
-            "jdbc:sqlite:" + CARPETA.resolve("plantaciones.db").toString().replace('\\', '/');
+    private static Path carpeta = Path.of(System.getProperty("user.home"), ".plantaciones");
 
     private Database() { }
 
+    /** Cambia la carpeta de datos (lo usan los tests para trabajar con una base de datos temporal). */
+    public static void usarCarpeta(Path nueva) {
+        carpeta = nueva;
+    }
+
     public static Path carpetaDatos() {
-        return CARPETA;
+        return carpeta;
     }
 
     public static Connection conectar() throws SQLException {
-        Connection conexion = DriverManager.getConnection(URL);
+        String url = "jdbc:sqlite:" + carpeta.resolve("plantaciones.db").toString().replace('\\', '/');
+        Connection conexion = DriverManager.getConnection(url);
         try (Statement st = conexion.createStatement()) {
             st.execute("PRAGMA foreign_keys = ON");
         }
@@ -29,7 +33,7 @@ public final class Database {
 
     public static void inicializar() {
         try {
-            Files.createDirectories(CARPETA);
+            Files.createDirectories(carpeta);
             try (Connection c = conectar(); Statement st = c.createStatement()) {
                 st.execute("""
                     CREATE TABLE IF NOT EXISTS plantacion (
